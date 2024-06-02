@@ -1,4 +1,3 @@
-
 import math
 import pygame
 import random
@@ -10,11 +9,11 @@ clock = pygame.time.Clock()
 run = True
 
 # Load and scale the rocket image
-rocket = pygame.image.load("resources/rocketgreen.png")
-rocket = pygame.transform.scale(rocket, (int(rocket.get_width() * 0.015), int(rocket.get_height() * 0.015)))
+rocket = pygame.image.load("resources/falcon.png").convert()
+rocket = pygame.transform.scale(rocket, (40,40))
 rocket=pygame.transform.rotate(rocket,-90)
 # Load asteroid image
-asteroid_image = pygame.image.load("resources/asteroid.png")
+asteroid_image = pygame.image.load("resources/ast4.png")
 asteroid_image = pygame.transform.scale(asteroid_image, (50, 50))
 
 # Initial variables
@@ -29,7 +28,7 @@ deceleration = 0.95  # Faster deceleration factor for quicker stopping
 # Bullet variables
 bullets = []
 bullet_speed = 5
-bullet_range = 300
+bullet_range = 500
 
 # Asteroid variables
 asteroids = []
@@ -38,7 +37,7 @@ spawn_rate = 30  # Number of frames between spawning asteroids
 
 def spawn_asteroid():
     # Spawn asteroid at a random position on the screen
-    x = random.randint(0, screen.get_width())
+    x = random.choice([0, screen.get_width()])
     y = random.randint(0, screen.get_height())
     direction = pygame.Vector2(random.choice([-1, 1]), random.choice([-1, 1])).normalize()
     asteroids.append({'pos': pygame.Vector2(x, y), 'dir': direction})
