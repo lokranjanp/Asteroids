@@ -4,43 +4,129 @@ import random
 
 # Initialize the game
 pygame.init()
-screen = pygame.display.set_mode((650, 650), pygame.RESIZABLE)
+pygame.mixer.init(441)
+screen = pygame.display.set_mode((600, 600), pygame.RESIZABLE)
 clock = pygame.time.Clock()
 run = True
 
-# Load and scale the rocket image
-rocket = pygame.image.load("resources/falcon.png").convert()
-rocket = pygame.transform.scale(rocket, (40,40))
-rocket=pygame.transform.rotate(rocket,-90)
-# Load asteroid image
-asteroid_image = pygame.image.load("resources/ast4.png")
-asteroid_image = pygame.transform.scale(asteroid_image, (50, 50))
+# Constants
+BLACK = (0, 0, 0)
+BULLET_SPEED = 5
+BULLET_RANGE = 500
+ASTEROID_SPEED = 2
+SPAWN_RATE = 25  # Number of frames between spawning asteroids
 
-# Initial variables
-rocket_rect = rocket.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
-angle = 90  # Initial angle to make the rocket face upwards
-rotation_speed = 5
-movement_speed = 0.1  # Adjusted for finer control
-position = pygame.Vector2(rocket_rect.center)
-velocity = pygame.Vector2(0, 0)  # Initial velocity
-deceleration = 0.95  # Faster deceleration factor for quicker stopping
+# Load images
+rocket_img = pygame.image.load("resources/ship.png").convert()
+rocket_img = pygame.transform.scale(rocket_img, (40, 40))
+rocket_img.set_colorkey(BLACK)
+rocket_img = pygame.transform.rotate(rocket_img, -90)
+shoot_sound = pygame.mixer.Sound("resources/bf.wav")
+explo_sound = pygame.mixer.Sound("resources/explosion.wav")
 
-# Bullet variables
-bullets = []
-bullet_speed = 5
-bullet_range = 500
+ast_img1 = pygame.image.load("resources/ast1.png")
+ast_img1 = pygame.transform.scale(ast_img1, (40, 40))
+ast_img1.set_colorkey(BLACK)
 
-# Asteroid variables
-asteroids = []
-asteroid_speed = 2
-spawn_rate = 30  # Number of frames between spawning asteroids
+ast_img2 = pygame.image.load("resources/ast2.png")
+ast_img2 = pygame.transform.scale(ast_img2, (35, 35))
+ast_img2.set_colorkey(BLACK)
+
+ast_img3 = pygame.image.load("resources/ast3.png")
+ast_img3 = pygame.transform.scale(ast_img3, (40, 40))
+ast_img3.set_colorkey(BLACK)
+
+ast_img4 = pygame.image.load("resources/ast4.png")
+ast_img4 = pygame.transform.scale(ast_img4, (35, 35))
+ast_img4.set_colorkey(BLACK)
+
+ast_imgs = [ast_img1, ast_img2, ast_img3, ast_img4]
+
+class Rocket(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.original_image = rocket_img
+        self.image = self.original_image.copy()
+        self.rect = self.image.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
+        self.angle = 90
+        self.rotation_speed = 5
+        self.movement_speed = 0.1
+        self.position = pygame.Vector2(self.rect.center)
+        self.velocity = pygame.Vector2(0, 2)
+        self.deceleration = 0.95
+
+    def update(self):
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_w]:
+            radians = math.radians(self.angle)
+            self.velocity.x += self.movement_speed * math.cos(radians)
+            self.velocity.y -= self.movement_speed * math.sin(radians)
+        if keys[pygame.K_a]:
+            self.angle += self.rotation_speed
+        if keys[pygame.K_d]:
+            self.angle -= self.rotation_speed
+
+        self.position += self.velocity
+        self.velocity *= self.deceleration
+        self.position.x %= screen.get_width()
+        self.position.y %= screen.get_height()
+
+        self.image = pygame.transform.rotate(self.original_image, self.angle)
+        self.rect = self.image.get_rect(center=self.position)
+
+    def shoot(self):
+        bullet_dir = pygame.Vector2(math.cos(math.radians(self.angle)), -math.sin(math.radians(self.angle)))
+        bullet = Bullet(self.position, bullet_dir)
+        all_sprites.add(bullet)
+        bullets.add(bullet)
+
+class Bullet(pygame.sprite.Sprite):
+    def __init__(self, position, direction):
+        super().__init__()
+        self.image = pygame.image.load("resources/bullet.png").convert_alpha()
+        self.image = pygame.transform.scale(self.image, (6, 6))  # Adjust size as necessary
+        self.rect = self.image.get_rect(center=position)
+        self.position = pygame.Vector2(position)
+        self.direction = direction
+        self.distance = 0
+
+    def update(self):
+        self.position += self.direction * BULLET_SPEED
+        self.distance += BULLET_SPEED
+        self.rect.center = self.position
+        if self.distance > BULLET_RANGE:
+            self.kill()
+
+
+class Asteroid(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.image = random.choice(ast_imgs)
+        self.rect = self.image.get_rect()
+        self.rect.x = random.choice([0, screen.get_width()])
+        self.rect.y = random.randint(0, screen.get_height())
+        self.direction = pygame.Vector2(random.choice([-1, 1]), random.choice([-1, 1])).normalize()
+        self.position = pygame.Vector2(self.rect.center)
+
+    def update(self):
+        self.position += self.direction * ASTEROID_SPEED
+        self.rect.center = self.position
+        if self.rect.top > screen.get_height() + 20 or self.rect.left < -20 or self.rect.right > screen.get_width() + 20:
+            self.kill()
 
 def spawn_asteroid():
-    # Spawn asteroid at a random position on the screen
-    x = random.choice([0, screen.get_width()])
-    y = random.randint(0, screen.get_height())
-    direction = pygame.Vector2(random.choice([-1, 1]), random.choice([-1, 1])).normalize()
-    asteroids.append({'pos': pygame.Vector2(x, y), 'dir': direction})
+    asteroid = Asteroid()
+    all_sprites.add(asteroid)
+    asteroids.add(asteroid)
+
+# Sprite groups
+all_sprites = pygame.sprite.Group()
+bullets = pygame.sprite.Group()
+asteroids = pygame.sprite.Group()
+
+# Create player
+player = Rocket()
+all_sprites.add(player)
 
 # Main game loop
 frame_count = 0
@@ -48,82 +134,34 @@ while run:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
-        if event.type == pygame.KEYDOWN:
+        elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
-                # Create a new bullet
-                bullet_pos = pygame.Vector2(position)
-                bullet_dir = pygame.Vector2(math.cos(math.radians(angle)), -math.sin(math.radians(angle)))
-                bullets.append({'pos': bullet_pos, 'dir': bullet_dir, 'distance': 0})
+                player.shoot()
+                shoot_sound.play()
 
     screen.fill('black')
 
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_w]:
-        # Calculate movement in the direction of the current angle
-        radians = math.radians(angle)
-        velocity.x += movement_speed * math.cos(radians)
-        velocity.y -= movement_speed * math.sin(radians)
+    all_sprites.update()
 
-    if keys[pygame.K_a]:
-        angle += rotation_speed
-    if keys[pygame.K_d]:
-        angle -= rotation_speed
+    # Check for collisions between bullets and asteroids
+    for bullet in bullets:
+        for asteroid in asteroids:
+            if asteroid.rect.collidepoint(bullet.position.x, bullet.position.y):
+                explo_sound.play()
+                bullet.kill()
+                asteroid.kill()
 
-    # Apply velocity to position
-    position += velocity
-
-    # Apply deceleration to velocity
-    velocity *= deceleration
-
-    # Ensure position stays within screen bounds
-    position.x %= screen.get_width()
-    position.y %= screen.get_height()
-
-    # Rotate the rocket image
-    rotated_rocket = pygame.transform.rotate(rocket, angle)
-    rotated_rect = rotated_rocket.get_rect(center=(position.x, position.y))
-
-    # Draw the rotated rocket
-    screen.blit(rotated_rocket, rotated_rect.topleft)
-
-    # Update and draw bullets
-    for bullet in bullets[:]:
-        bullet['pos'] += bullet['dir'] * bullet_speed
-        bullet['distance'] += bullet_speed
-        if bullet['distance'] > bullet_range:
-            bullets.remove(bullet)
-        else:
-            pygame.draw.circle(screen, 'red', (int(bullet['pos'].x), int(bullet['pos'].y)), 3)
+    # Check for collisions between player and asteroids
+    if pygame.sprite.spritecollideany(player, asteroids):
+        run = False  # End the game
 
     # Spawn new asteroids
     frame_count += 1
-    if frame_count % spawn_rate == 0:
+    if frame_count % SPAWN_RATE == 0:
         spawn_asteroid()
 
-    # Update and draw asteroids
-    for asteroid in asteroids[:]:
-        asteroid['pos'] += asteroid['dir'] * asteroid_speed
-        # Check for collision with rocket
-        if rotated_rect.collidepoint(asteroid['pos'].x, asteroid['pos'].y):
-            run = False  # End the game
-        # Draw the asteroid
-        asteroid_rect = asteroid_image.get_rect(center=asteroid['pos'])
-        screen.blit(asteroid_image, asteroid_rect.topleft)
-
-    # Check for bullet-asteroid collisions
-    for bullet in bullets[:]:
-        for asteroid in asteroids[:]:
-            asteroid_rect = asteroid_image.get_rect(center=asteroid['pos'])
-            if asteroid_rect.collidepoint(bullet['pos'].x, bullet['pos'].y):
-                bullets.remove(bullet)
-                asteroids.remove(asteroid)
-                break
-
+    all_sprites.draw(screen)
     pygame.display.flip()
     clock.tick(60)
 
 pygame.quit()
-
-
-
-
