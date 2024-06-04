@@ -1,6 +1,7 @@
 import math
 import pygame
 import random
+import time
 
 # Initialize the game
 pygame.init()
@@ -97,9 +98,8 @@ class Bullet(pygame.sprite.Sprite):
         if self.distance > BULLET_RANGE:
             self.kill()
 
-
 class Asteroid(pygame.sprite.Sprite):
-    def __init__(self):
+    def __init__(self, speed):
         super().__init__()
         self.image = random.choice(ast_imgs)
         self.rect = self.image.get_rect()
@@ -107,15 +107,16 @@ class Asteroid(pygame.sprite.Sprite):
         self.rect.y = random.randint(0, screen.get_height())
         self.direction = pygame.Vector2(random.choice([-1, 1]), random.choice([-1, 1])).normalize()
         self.position = pygame.Vector2(self.rect.center)
+        self.speed = speed
 
     def update(self):
-        self.position += self.direction * ASTEROID_SPEED
+        self.position += self.direction * (self.speed)
         self.rect.center = self.position
         if self.rect.top > screen.get_height() + 20 or self.rect.left < -20 or self.rect.right > screen.get_width() + 20:
             self.kill()
 
 def spawn_asteroid():
-    asteroid = Asteroid()
+    asteroid = Asteroid(ASTEROID_SPEED)
     all_sprites.add(asteroid)
     asteroids.add(asteroid)
 
@@ -131,9 +132,11 @@ all_sprites.add(player)
 # Main game loop
 frame_count = 0
 while run:
+    start = time.time()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
+            end = time.time()
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
                 player.shoot()
@@ -149,11 +152,14 @@ while run:
             if asteroid.rect.collidepoint(bullet.position.x, bullet.position.y):
                 explo_sound.play()
                 bullet.kill()
+                mid = time.time()
                 asteroid.kill()
+                ASTEROID_SPEED += 0.1
 
     # Check for collisions between player and asteroids
     if pygame.sprite.spritecollideany(player, asteroids):
         run = False  # End the game
+        end = time.time()
 
     # Spawn new asteroids
     frame_count += 1
