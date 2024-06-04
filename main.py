@@ -4,7 +4,7 @@ import random
 
 # Initialize the game
 pygame.init()
-pygame.mixer.init(441)
+pygame.mixer.init()
 screen = pygame.display.set_mode((600, 600), pygame.RESIZABLE)
 clock = pygame.time.Clock()
 run = True
