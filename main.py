@@ -6,7 +6,9 @@ import time
 # Initialize the game
 pygame.init()
 pygame.mixer.init()
-screen = pygame.display.set_mode((600, 600), pygame.RESIZABLE)
+pygame.font.init()
+font_score = pygame.font.SysFont('Bauhaus 93', 30)
+screen = pygame.display.set_mode((600, 600))
 clock = pygame.time.Clock()
 run = True
 
@@ -43,7 +45,35 @@ ast_img4.set_colorkey(BLACK)
 
 ast_imgs = [ast_img1, ast_img2, ast_img3, ast_img4]
 
-class healthbar():
+class Game_Score():
+    def __init__(self):
+        self.asteroids_hit = 0
+        self.bullets_used = 0
+        self.score = 0
+
+    def asteroid_hit(self):
+        self.asteroids_hit += 1
+        self.update_score()
+
+    def bullet_fired(self):
+        self.bullets_used += 1
+        self.update_score()
+
+    def update_score(self):
+        current_time = pygame.time.get_ticks()
+        self.score = (self.asteroids_hit * 100) - (self.bullets_used * 2)
+
+    def get_score(self):
+        self.update_score()
+        return int(self.score)
+
+    def display_score(self, screen):
+        score_text = font_score.render(f'Score: {int(self.score)}', True, (255, 255, 255))
+        text_rect = score_text.get_rect()
+        screen.blit(score_text,(screen.get_width() - text_rect.width - 10, screen.get_height() - text_rect.height - 10))
+
+
+class Healthbar():
     def __init__(self, x, y, w, h, maxh):
         self.x = x
         self.y = y
@@ -119,9 +149,9 @@ class Asteroid(pygame.sprite.Sprite):
         self.image = random.choice(ast_imgs)
         self.rect = self.image.get_rect()
         self.rect.x = random.choice([0, screen.get_width()])
-        self.rect.y = random.randint(0, screen.get_height())
-        self.direction = pygame.Vector2(random.choice([-1, 1]), random.choice([-1, 1])).normalize()
-        self.position = pygame.Vector2(self.rect.center)
+        self.rect.y = -50
+        self.direction = pygame.Vector2(random.uniform(-0.5, 0.5), 1).normalize()
+        self.position = pygame.Vector2(self.rect.topleft)
         self.speed = speed
 
     def update(self):
@@ -143,12 +173,15 @@ asteroids = pygame.sprite.Group()
 # Create player
 player = Rocket()
 all_sprites.add(player)
-health = healthbar(20,10,100,15,100)
+health = Healthbar(20,10,100,15,100)
+
+# Initialize game score
+game_score = Game_Score()
 
 # Main game loop
 frame_count = 0
 while run:
-
+    game_score.display_score(screen)
     if health.hp <= 0:
         player.kill()
         run = False
@@ -160,17 +193,17 @@ while run:
             end = time.time()
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
+                game_score.bullet_fired()
                 player.shoot()
                 shoot_sound.play()
 
     screen.fill('black')
-
     all_sprites.update()
-
     # Check for collisions between bullets and asteroids
     for bullet in bullets:
         for asteroid in asteroids:
             if asteroid.rect.collidepoint(bullet.position.x, bullet.position.y):
+                game_score.asteroid_hit()
                 explo_sound.play()
                 bullet.kill()
                 mid = time.time()
@@ -192,9 +225,9 @@ while run:
     if frame_count % SPAWN_RATE == 0:
         spawn_asteroid()
 
+    current_score = game_score.get_score()
     all_sprites.draw(screen)
     health.draw(screen)
     pygame.display.flip()
     clock.tick(80)
-
 pygame.quit()
