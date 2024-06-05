@@ -1,343 +1,186 @@
+import math
 import pygame
 import random
-import os
-import math
 
-# Initialize Pygame
+# Initialize the game
 pygame.init()
-pygame.mixer.init()  # Initialize sound
+pygame.mixer.init()
+screen = pygame.display.set_mode((800, 800))
+clock = pygame.time.Clock()
+run = True
 
 # Constants
-WIDTH = 400
-HEIGHT = 600
-FPS = 60
-WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
-RED = (255, 0, 0)
-YELLOW = (255, 255, 0)
-GREEN = (0, 255, 0)
-
-# Setup display
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Game Window")
-clock = pygame.time.Clock()
-
-# Paths
-game_folder = os.path.dirname(__file__)
-img_folder = os.path.join(game_folder, "shooter-graphics")
-song_folder = os.path.join(game_folder, "sounds")
+BULLET_SPEED = 5
+BULLET_RANGE = 500
+ASTEROID_SPEED = 2
+SPAWN_RATE = 25  # Number of frames between spawning asteroids
 
 # Load images
-background = pygame.image.load(os.path.join(img_folder, "back.png")).convert()
-background_rect = background.get_rect()
-ship_img = pygame.image.load(os.path.join(img_folder, "ship.png")).convert()
-ship_tag = pygame.transform.scale(ship_img, (15, 15))
-ship_tag.set_colorkey(BLACK)
-laser_img = pygame.image.load(os.path.join(img_folder, "ebullet1.png")).convert()
+rocket_img = pygame.image.load("resources/ship.png").convert()
+rocket_img = pygame.transform.scale(rocket_img, (40, 40))
+rocket_img.set_colorkey(BLACK)
+rocket_img = pygame.transform.rotate(rocket_img, -90)
+shoot_sound = pygame.mixer.Sound("resources/bf.wav")
+explo_sound = pygame.mixer.Sound("resources/explosion.wav")
 
-# Load asteroid images
-asteroid_images = []
-asteroid_list = ["ast1.png", "ast2.png", "ast3.png", "ast4.png"]
-for img in asteroid_list:
-    asteroid_images.append(pygame.image.load(os.path.join(img_folder, img)).convert())
+ast_img1 = pygame.image.load("resources/ast1.png")
+ast_img1 = pygame.transform.scale(ast_img1, (40, 40))
+ast_img1.set_colorkey(BLACK)
 
-# Load powerup images
-power_img = {
-    'gun': pygame.image.load(os.path.join(img_folder, 'bolt_gold.png')).convert(),
-    'health': pygame.image.load(os.path.join(img_folder, 'pill_green.png')).convert(),
-    'live': pygame.image.load(os.path.join(img_folder, 'powerupRed_star.png')).convert()
-}
+ast_img2 = pygame.image.load("resources/ast2.png")
+ast_img2 = pygame.transform.scale(ast_img2, (35, 35))
+ast_img2.set_colorkey(BLACK)
 
-# Load sounds
-shoot_sound = pygame.mixer.Sound(os.path.join(song_folder, "bf.wav"))
-explo_sound = pygame.mixer.Sound(os.path.join(song_folder, 'explosion.wav'))
-background_sound = pygame.mixer.music.load(os.path.join(song_folder, 'bck.wav'))
-power_sound = pygame.mixer.Sound(os.path.join(song_folder, "sfx_zap.ogg"))
-player_die_sound = pygame.mixer.Sound(os.path.join(song_folder, 'shipdes.ogg'))
+ast_img3 = pygame.image.load("resources/ast3.png")
+ast_img3 = pygame.transform.scale(ast_img3, (40, 40))
+ast_img3.set_colorkey(BLACK)
 
-# Explosion animations
-explosion_anim = {'lar': [], 'sml': [], 'player': []}
-for i in range(9):
-    filename = 'regularExplosion0' + str(i) + '.png'
-    img = pygame.image.load(os.path.join(img_folder, filename)).convert()
-    img.set_colorkey(BLACK)
-    img_lr = pygame.transform.scale(img, (60, 60))
-    img_sm = pygame.transform.scale(img, (30, 30))
-    explosion_anim['lar'].append(img_lr)
-    explosion_anim['sml'].append(img_sm)
-    filename = 'sonicExplosion0' + str(i) + '.png'
-    img = pygame.image.load(os.path.join(img_folder, filename)).convert()
-    img.set_colorkey(BLACK)
-    img_tr = pygame.transform.scale(img, (100, 100))
-    explosion_anim['player'].append(img_tr)
+ast_img4 = pygame.image.load("resources/ast4.png")
+ast_img4 = pygame.transform.scale(ast_img4, (35, 35))
+ast_img4.set_colorkey(BLACK)
 
-# Define classes
-class Battleship(pygame.sprite.Sprite):
+ast_imgs = [ast_img1, ast_img2, ast_img3, ast_img4]
+
+
+
+
+class Rocket(pygame.sprite.Sprite):
     def __init__(self):
-        pygame.sprite.Sprite.__init__(self)
-        self.original_image = pygame.transform.scale(ship_img, (60, 60))
-        self.original_image.set_colorkey(BLACK)
+        super().__init__()
+        self.original_image = rocket_img
         self.image = self.original_image.copy()
-        self.rect = self.image.get_rect()
-        self.radius = 29
-        self.rect.centerx = WIDTH / 2
-        self.rect.bottom = HEIGHT - 10
+        self.rect = self.image.get_rect(center=(screen.get_width()//2, screen.get_height()-100))
         self.angle = 90
         self.rotation_speed = 5
         self.movement_speed = 0.1
         self.position = pygame.Vector2(self.rect.center)
         self.velocity = pygame.Vector2(0, 2)
         self.deceleration = 0.95
-        self.health = 100
-        self.lives = 2
-        self.hidden = False
-        self.hide_timer = pygame.time.get_ticks()
-        self.power_level = 1
-        self.power_timer = pygame.time.get_ticks()
 
     def update(self):
-        if self.power_level >= 2 and pygame.time.get_ticks() - self.power_timer > 3000:
-            self.power_level -= 1
-            self.power_timer = pygame.time.get_ticks()
-        if self.hidden and pygame.time.get_ticks() - self.hide_timer > 2000:
-            self.hidden = False
-            self.rect.centerx = WIDTH / 2
-            self.rect.bottom = HEIGHT - 10
-        self.speedx = 0
-        self.speedy = 0
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_w]:
-            self.move_forward()
+        # if keys[pygame.K_w]:
+        #     radians = math.radians(self.angle)
+        #     self.velocity.y -= self.movement_speed * math.sin(radians)
         if keys[pygame.K_a]:
-            self.rotate_left()
+            # self.angle += self.rotation_speed
+            self.velocity.x -= self.movement_speed
+
         if keys[pygame.K_d]:
-            self.rotate_right()
+            # self.angle -= self.rotation_speed
+            self.velocity.x += self.movement_speed
 
         self.position += self.velocity
         self.velocity *= self.deceleration
-        self.position.x %= WIDTH
-        self.position.y %= HEIGHT
+        self.position.x %= screen.get_width()
+        self.position.y %= screen.get_height()
 
         self.image = pygame.transform.rotate(self.original_image, self.angle)
         self.rect = self.image.get_rect(center=self.position)
 
-    def move_forward(self):
-        radians = math.radians(self.angle)
-        self.velocity.x += self.movement_speed * math.cos(radians)
-        self.velocity.y -= self.movement_speed * math.sin(radians)
-
-    def rotate_left(self):
-        self.angle += self.rotation_speed
-
-    def rotate_right(self):
-        self.angle -= self.rotation_speed
-
     def shoot(self):
-        if self.power_level == 1:
-            bullet = Bullet(self.rect.centerx, self.rect.top, self.angle)
-            all_sprites.add(bullet)
-            Bull.add(bullet)
-            shoot_sound.play()
-        elif self.power_level >= 2:
-            bullet1 = Bullet(self.rect.centerx - 25, self.rect.top - 20, self.angle)
-            bullet2 = Bullet(self.rect.centerx + 25, self.rect.top - 20, self.angle)
-            all_sprites.add(bullet1)
-            all_sprites.add(bullet2)
-            Bull.add(bullet1)
-            Bull.add(bullet2)
-            shoot_sound.play()
-
-    def hide(self):
-        self.hidden = True
-        self.hide_timer = pygame.time.get_ticks()
-        self.rect.center = (WIDTH / 2, HEIGHT + 200)
-
-    def powerup(self):
-        self.power_level += 1
-        self.power_timer = pygame.time.get_ticks()
-
+        bullet_dir = pygame.Vector2(math.cos(math.radians(self.angle)), -math.sin(math.radians(self.angle)))
+        bullet = Bullet(self.position, bullet_dir)
+        all_sprites.add(bullet)
+        bullets.add(bullet)
 
 class Bullet(pygame.sprite.Sprite):
-    def __init__(self, x, y, angle):
-        pygame.sprite.Sprite.__init__(self)
-        self.image = pygame.transform.scale(laser_img, (5, 10))
-        self.image.set_colorkey(BLACK)
-        self.rect = self.image.get_rect()
-        self.rect.bottom = y
-        self.rect.centerx = x
-        self.speed = 10
-        self.angle = angle
+    def __init__(self, position, direction):
+        super().__init__()
+        self.image = pygame.image.load("resources/bullet.png").convert_alpha()
+        self.image = pygame.transform.scale(self.image, (6, 6))  # Adjust size as necessary
+        self.rect = self.image.get_rect(center=position)
+        self.position = pygame.Vector2(position)
+        self.direction = direction
+        self.distance = 0
 
     def update(self):
-        radians = math.radians(self.angle)
-        self.rect.x += self.speed * math.cos(radians)
-        self.rect.y -= self.speed * math.sin(radians)
-        if self.rect.bottom < 0 or self.rect.right < 0 or self.rect.left > WIDTH or self.rect.top > HEIGHT:
+        self.position += self.direction * BULLET_SPEED
+        self.distance += BULLET_SPEED
+        self.rect.center = self.position
+        if self.distance > BULLET_RANGE:
             self.kill()
 
 
-class Mob(pygame.sprite.Sprite):
+class Asteroid(pygame.sprite.Sprite):
     def __init__(self):
-        pygame.sprite.Sprite.__init__(self)
-        self.image_orig = pygame.transform.scale(random.choice(asteroid_images), (30, 30))
-        self.image_orig.set_colorkey(BLACK)
-        self.image = self.image_orig.copy()
+        super().__init__()
+        self.image = random.choice(ast_imgs)
         self.rect = self.image.get_rect()
-        self.radius = 15
-        self.rect.x = random.randrange(0, WIDTH - self.rect.width)
-        self.rect.y = random.randrange(-140, -40)
-        self.speedy = random.randrange(1, 6)
-        self.speedx = -2 + random.randrange(0, 4)
-        self.rot = 0
-        self.rotspeed = random.randrange(-10, 10)
-        self.last_update = pygame.time.get_ticks()
-
-    def rotate(self):
-        now = pygame.time.get_ticks()
-        if now - self.last_update > 60:
-            self.last_update = now
-            self.rot = (self.rot + self.rotspeed) % 360
-            new_image = pygame.transform.rotate(self.image_orig, self.rot)
-            old_center = self.rect.center
-            self.image = new_image
-            self.rect = self.image.get_rect()
-            self.rect.center = old_center
+        self.rect.x = random.choice([0, screen.get_width()])
+        self.rect.y = random.randint(0, screen.get_height())
+        self.direction = pygame.Vector2(random.choice([-1, 1]), random.choice([-1, 1])).normalize()
+        self.position = pygame.Vector2(self.rect.center)
 
     def update(self):
-        self.rotate()
-        self.rect.y += self.speedy
-        self.rect.x += self.speedx
-        if self.rect.top > HEIGHT + 20 or self.rect.left < -20 or self.rect.right > WIDTH + 20:
-            self.rect.x = random.randrange(0, WIDTH - self.rect.width)
-            self.rect.y = random.randrange(-140, -40)
-            self.speedy = random.randrange(1, 7)
-
-
-class Explo(pygame.sprite.Sprite):
-    def __init__(self, center, size):
-        pygame.sprite.Sprite.__init__(self)
-        self.size = size
-        self.image = explosion_anim[self.size][0]
-        self.rect = self.image.get_rect()
-        self.rect.center = center
-        self.frame = 0
-        self.last_update = pygame.time.get_ticks()
-        self.frame_rate = 100
-
-    def update(self):
-        now = pygame.time.get_ticks()
-        if now - self.last_update > self.frame_rate:
-            self.last_update = now
-            self.frame += 1
-            if self.frame == len(explosion_anim[self.size]):
-                self.kill()
-            else:
-                center = self.rect.center
-                self.image = explosion_anim[self.size][self.frame]
-                self.rect = self.image.get_rect()
-                self.rect.center = center
-
-
-class Power(pygame.sprite.Sprite):
-    def __init__(self, center):
-        pygame.sprite.Sprite.__init__(self)
-        self.type = random.choice(['gun', 'health', 'live'])
-        self.image = power_img[self.type]
-        self.image = pygame.transform.scale(self.image, (20, 20))
-        self.image.set_colorkey(BLACK)
-        self.rect = self.image.get_rect()
-        self.rect.center = center
-        self.speedy = 3
-
-    def update(self):
-        self.rect.y += self.speedy
-        if self.rect.top > HEIGHT:
+        self.position += self.direction * ASTEROID_SPEED
+        self.rect.center = self.position
+        if self.rect.top > screen.get_height() + 20 or self.rect.left < -20 or self.rect.right > screen.get_width() + 20:
             self.kill()
 
-
-def create_new_mobs():
-    for i in range(6):
-        new_mob = Mob()
-        all_sprites.add(new_mob)
-        mobs.add(new_mob)
-
+def spawn_asteroid():
+    asteroid = Asteroid()
+    all_sprites.add(asteroid)
+    asteroids.add(asteroid)
 
 # Sprite groups
 all_sprites = pygame.sprite.Group()
-mobs = pygame.sprite.Group()
-Bull = pygame.sprite.Group()
-powers = pygame.sprite.Group()
+bullets = pygame.sprite.Group()
+asteroids = pygame.sprite.Group()
 
-player = Battleship()
+# Create player
+player = Rocket()
 all_sprites.add(player)
-create_new_mobs()
 
-score = 0
-pygame.mixer.music.play(loops=-1)
+health = healthbar(20,10,100,15,100)
 
-# Main loop
-running = True
-while running:
-    clock.tick(FPS)
+# Main game loop
+frame_count = 0
+while run:
+
+    if health.hp <= 0:
+        player.kill()
+        run = False
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = False
+            run = False
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
                 player.shoot()
+                shoot_sound.play()
+
+    screen.fill('black')
 
     all_sprites.update()
 
-    hits = pygame.sprite.groupcollide(mobs, Bull, True, True)
-    for hit in hits:
-        score += 50 - hit.radius
-        explo_sound.play()
-        expl = Explo(hit.rect.center, 'lar')
-        all_sprites.add(expl)
-        if random.random() > 0.9:
-            pow = Power(hit.rect.center)
-            all_sprites.add(pow)
-            powers.add(pow)
-        new_mob = Mob()
-        all_sprites.add(new_mob)
-        mobs.add(new_mob)
+    # Check for collisions between bullets and asteroids
+    for bullet in bullets:
+        for asteroid in asteroids:
+            if asteroid.rect.collidepoint(bullet.position.x, bullet.position.y):
+                explo_sound.play()
+                bullet.kill()
+                asteroid.kill()
 
-    hits = pygame.sprite.spritecollide(player, powers, True)
-    for hit in hits:
-        if hit.type == 'gun':
-            player.powerup()
-            power_sound.play()
-        if hit.type == 'health':
-            player.health += random.randrange(10, 30)
-            if player.health >= 100:
-                player.health = 100
-        if hit.type == 'live':
-            player.lives += 1
-            if player.lives >= 5:
-                player.lives = 5
+    # Check for collisions between player and asteroids
+    # if pygame.sprite.spritecollideany(player, asteroids):
+    #     health.hp = health.hp - 1
+    #     break
+    for asteroid in asteroids :
+        if player.rect.collidepoint(asteroid.position.x,asteroid.position.y):
+            explo_sound.play()
+            asteroid.kill()
+            health.hp -= 10
 
-    hits = pygame.sprite.spritecollide(player, mobs, True, pygame.sprite.collide_circle)
-    for hit in hits:
-        player.health -= hit.radius * 2
-        expl = Explo(hit.rect.center, 'sml')
-        all_sprites.add(expl)
-        new_mob = Mob()
-        all_sprites.add(new_mob)
-        mobs.add(new_mob)
-        if player.health <= 0:
-            player_die_sound.play()
-            death_explosion = Explo(player.rect.center, 'player')
-            all_sprites.add(death_explosion)
-            player.hide()
-            player.lives -= 1
-            player.health = 100
+    # Spawn new asteroids
+    frame_count += 1
+    if frame_count % SPAWN_RATE == 0:
+        spawn_asteroid()
 
-    if player.lives == 0 and not death_explosion.alive():
-        running = False
-
-    screen.fill(BLACK)
-    screen.blit(background, background_rect)
     all_sprites.draw(screen)
+    health.draw(screen)
     pygame.display.flip()
+    clock.tick(80)
 
 pygame.quit()

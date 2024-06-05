@@ -43,12 +43,25 @@ ast_img4.set_colorkey(BLACK)
 
 ast_imgs = [ast_img1, ast_img2, ast_img3, ast_img4]
 
+class healthbar():
+    def __init__(self, x, y, w, h, maxh):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.hp = maxh
+
+    def draw(self, screen):
+        # ratio = self.hp/self.maxh
+        pygame.draw.rect(screen, 'red', (self.x, self.y, self.w, self.h))
+        pygame.draw.rect(screen, 'green', (self.x, self.y, self.hp, self.h))
+
 class Rocket(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
         self.original_image = rocket_img
         self.image = self.original_image.copy()
-        self.rect = self.image.get_rect(center=(screen.get_width() // 2, screen.get_height() // 2))
+        self.rect = self.image.get_rect(center=(screen.get_width()//2, screen.get_height()-100))
         self.angle = 90
         self.rotation_speed = 5
         self.movement_speed = 0.1
@@ -58,14 +71,16 @@ class Rocket(pygame.sprite.Sprite):
 
     def update(self):
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_w]:
-            radians = math.radians(self.angle)
-            self.velocity.x += self.movement_speed * math.cos(radians)
-            self.velocity.y -= self.movement_speed * math.sin(radians)
+        # if keys[pygame.K_w]:
+        #     radians = math.radians(self.angle)
+        #     self.velocity.x += self.movement_speed * math.cos(radians)
+        #     self.velocity.y -= self.movement_speed * math.sin(radians)
         if keys[pygame.K_a]:
-            self.angle += self.rotation_speed
+            #self.angle += self.rotation_speed
+            self.velocity.x -= self.movement_speed
         if keys[pygame.K_d]:
-            self.angle -= self.rotation_speed
+            #self.angle -= self.rotation_speed
+            self.velocity.x += self.movement_speed
 
         self.position += self.velocity
         self.velocity *= self.deceleration
@@ -128,10 +143,16 @@ asteroids = pygame.sprite.Group()
 # Create player
 player = Rocket()
 all_sprites.add(player)
+health = healthbar(20,10,100,15,100)
 
 # Main game loop
 frame_count = 0
 while run:
+
+    if health.hp <= 0:
+        player.kill()
+        run = False
+
     start = time.time()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -157,9 +178,14 @@ while run:
                 ASTEROID_SPEED += 0.1
 
     # Check for collisions between player and asteroids
-    if pygame.sprite.spritecollideany(player, asteroids):
-        run = False  # End the game
-        end = time.time()
+    # if pygame.sprite.spritecollideany(player, asteroids):
+    #     run = False  # End the game
+    #     end = time.time()
+    for asteroid in asteroids :
+        if player.rect.collidepoint(asteroid.position.x,asteroid.position.y):
+            explo_sound.play()
+            asteroid.kill()
+            health.hp -= 10
 
     # Spawn new asteroids
     frame_count += 1
@@ -167,7 +193,8 @@ while run:
         spawn_asteroid()
 
     all_sprites.draw(screen)
+    health.draw(screen)
     pygame.display.flip()
-    clock.tick(60)
+    clock.tick(80)
 
 pygame.quit()
