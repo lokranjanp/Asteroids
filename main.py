@@ -14,8 +14,8 @@ run = True
 
 # Constants
 BLACK = (0, 0, 0)
-BULLET_SPEED = 5
-BULLET_RANGE = 500
+BULLET_SPEED = 5.5
+BULLET_RANGE = 600
 ASTEROID_SPEED = 2
 SPAWN_RATE = 25  # Number of frames between spawning asteroids
 
@@ -60,7 +60,6 @@ class Game_Score():
         self.update_score()
 
     def update_score(self):
-        current_time = pygame.time.get_ticks()
         self.score = (self.asteroids_hit * 100) - (self.bullets_used * 2)
 
     def get_score(self):
@@ -70,7 +69,7 @@ class Game_Score():
     def display_score(self, screen):
         score_text = font_score.render(f'Score: {int(self.score)}', True, (255, 255, 255))
         text_rect = score_text.get_rect()
-        screen.blit(score_text,(screen.get_width() - text_rect.width - 10, screen.get_height() - text_rect.height - 10))
+        screen.blit(score_text, (screen.get_width() - text_rect.width - 10, screen.get_height() - text_rect.height - 10))
 
 
 class Healthbar():
@@ -173,7 +172,7 @@ asteroids = pygame.sprite.Group()
 # Create player
 player = Rocket()
 all_sprites.add(player)
-health = Healthbar(20,10,100,15,100)
+health = Healthbar(20, 10, 100, 15, 100)
 
 # Initialize game score
 game_score = Game_Score()
@@ -226,6 +225,7 @@ while run:
         spawn_asteroid()
 
     current_score = game_score.get_score()
+    game_score.display_score(screen)
     all_sprites.draw(screen)
     health.draw(screen)
     pygame.display.flip()
