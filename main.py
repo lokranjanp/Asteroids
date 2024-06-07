@@ -102,7 +102,7 @@ class Game_Score():
 
     def display_score(self, screen):
         self.update_accuracy()
-        score_text = font_score.render(f'Score: {int(self.score)} \n Accuracy: {self.accuracy:.2f}', True, (255, 255, 255))
+        score_text = font_score.render(f'Score: {int(self.score)} Accuracy: {self.accuracy:.2f}', True, (255, 255, 255))
         text_rect = score_text.get_rect()
         screen.blit(score_text, (screen.get_width() - text_rect.width - 10, screen.get_height() - text_rect.height - 10))
 
