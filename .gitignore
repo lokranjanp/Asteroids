@@ -1,2 +1,3 @@
 git rm -r --cached .idea
 git rm -r --cached asteroid_game
+git rm -r --cached game_data.csv

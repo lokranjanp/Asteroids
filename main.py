@@ -14,19 +14,26 @@ font_score = pygame.font.SysFont('Bauhaus 93', 30)
 screen = pygame.display.set_mode((600, 600))
 clock = pygame.time.Clock()
 run = True
-file_name = "data.csv"
+DATA_FILE = "game_data.csv"
 game_date = date.today()
-game_time = datetime.now()
+game_time = datetime.now().time()
+game_time = game_time.strftime("%H:%M:%S")
 
-file_empty = os.path.getsize(file_name) == 0
+file_exists = os.path.exists(DATA_FILE) == 1
+file_empty = os.path.getsize(DATA_FILE) == 0
 
-with open(file_name, 'a', newline='') as file:
+if not file_exists:
+    with open(DATA_FILE, 'w', newline='') as file:
+        writer = csv.writer(file)
+        # Write the headers if the file is new or empty
+        if file_empty:
+            writer.writerow(['Game Date', 'Game Time', 'Elapsed Time', 'Reason', 'Score', 'Accuracy', 'Asteroids Hit'])
+
+with open(DATA_FILE, 'a', newline='') as file:
     writer = csv.writer(file)
-
     # Write the headers if the file is new or empty
     if file_empty:
-        writer.writerow(['Game Date', 'Game Time', 'Elapsed Time', 'Score', 'Accuracy'])
-
+        writer.writerow(['Game Date', 'Game Time', 'Elapsed Time', 'Reason', 'Score', 'Accuracy', 'Asteroids Hit'])
 
 # Constants
 BLACK = (0, 0, 0)
@@ -87,7 +94,7 @@ class Game_Score():
 
     def get_accuracy(self):
         self.update_accuracy()
-        return round(self.accuracy, 1)
+        return round(self.accuracy, 2)
 
     def get_score(self):
         self.update_score()
@@ -95,7 +102,7 @@ class Game_Score():
 
     def display_score(self, screen):
         self.update_accuracy()
-        score_text = font_score.render(f'Score: {int(self.score)} \n Accuracy: {self.accuracy:.1f}', True, (255, 255, 255))
+        score_text = font_score.render(f'Score: {int(self.score)} \n Accuracy: {self.accuracy:.2f}', True, (255, 255, 255))
         text_rect = score_text.get_rect()
         screen.blit(score_text, (screen.get_width() - text_rect.width - 10, screen.get_height() - text_rect.height - 10))
 
@@ -208,6 +215,8 @@ current_score = 0
 end = 0
 time_elap = 0
 player_accuracy = 0
+asteroids_hit = 0
+death_reason = ""
 
 # Main game loop
 
@@ -216,14 +225,19 @@ start =time.time()
 while run:
     game_score.display_score(screen)
     if health.hp <= 0:
+        asteroids_hit = game_score.asteroids_hit
+        death_reason = "Spacecraft Health 0"
         player.kill()
         run = False
         end = time.time()
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
+            asteroids_hit = game_score.asteroids_hit
+            death_reason = "Player Quit"
             run = False
             end = time.time()
+
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
                 game_score.bullet_fired()
@@ -260,6 +274,7 @@ while run:
 
     current_score = game_score.get_score()
     player_accuracy = game_score.get_accuracy()
+    asteroids_hit = game_score.asteroids_hit
     game_score.display_score(screen)
     all_sprites.draw(screen)
     health.draw(screen)
@@ -269,7 +284,8 @@ while run:
 end = time.time()
 pygame.quit()
 time_elap = (end - start)
-with open(file_name, 'a', newline='') as file:
+with open(DATA_FILE, 'a', newline='') as file:
     writer = csv.writer(file)
-    writer.writerow([game_date, game_time, round(time_elap, 1), current_score, player_accuracy])
+    writer.writerow([game_date, game_time, round(time_elap, 2), death_reason, current_score, player_accuracy, asteroids_hit])
 
+    #['Game Date', 'Game Time', 'Elapsed Time', 'Reason', 'Score', 'Accuracy', 'Asteroids Hit']
