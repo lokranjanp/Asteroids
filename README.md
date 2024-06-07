@@ -4,5 +4,6 @@ Project to train a Reinforcement Learning Model to learn playing Asteroids.
 
 Game graphics used from :
     Spacecraft Redux : https://www.kenney.nl/assets/space-shooter-redux
-    License : MIT
     
+License : MIT
+
