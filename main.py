@@ -2,6 +2,9 @@ import math
 import pygame
 import random
 import time
+import csv
+from datetime import date, datetime
+import os
 
 # Initialize the game
 pygame.init()
@@ -11,6 +14,19 @@ font_score = pygame.font.SysFont('Bauhaus 93', 30)
 screen = pygame.display.set_mode((600, 600))
 clock = pygame.time.Clock()
 run = True
+file_name = "data.csv"
+game_date = date.today()
+game_time = datetime.now()
+
+file_empty = os.path.getsize(file_name) == 0
+
+with open(file_name, 'a', newline='') as file:
+    writer = csv.writer(file)
+
+    # Write the headers if the file is new or empty
+    if file_empty:
+        writer.writerow(['Game Date', 'Game Time', 'Elapsed Time', 'Score', 'Accuracy'])
+
 
 # Constants
 BLACK = (0, 0, 0)
@@ -50,6 +66,7 @@ class Game_Score():
         self.asteroids_hit = 0
         self.bullets_used = 0
         self.score = 0
+        self.accuracy = 0
 
     def asteroid_hit(self):
         self.asteroids_hit += 1
@@ -62,12 +79,23 @@ class Game_Score():
     def update_score(self):
         self.score = (self.asteroids_hit * 100) - (self.bullets_used * 2)
 
+    def update_accuracy(self):
+        if self.bullets_used > 0:
+            self.accuracy = self.asteroids_hit / self.bullets_used
+        else:
+            self.accuracy = 0
+
+    def get_accuracy(self):
+        self.update_accuracy()
+        return round(self.accuracy, 1)
+
     def get_score(self):
         self.update_score()
         return int(self.score)
 
     def display_score(self, screen):
-        score_text = font_score.render(f'Score: {int(self.score)}', True, (255, 255, 255))
+        self.update_accuracy()
+        score_text = font_score.render(f'Score: {int(self.score)} \n Accuracy: {self.accuracy:.1f}', True, (255, 255, 255))
         text_rect = score_text.get_rect()
         screen.blit(score_text, (screen.get_width() - text_rect.width - 10, screen.get_height() - text_rect.height - 10))
 
@@ -104,10 +132,10 @@ class Rocket(pygame.sprite.Sprite):
         #     radians = math.radians(self.angle)
         #     self.velocity.x += self.movement_speed * math.cos(radians)
         #     self.velocity.y -= self.movement_speed * math.sin(radians)
-        if keys[pygame.K_a]:
+        if keys[pygame.K_a] or keys[pygame.K_LEFT]:
             #self.angle += self.rotation_speed
             self.velocity.x -= self.movement_speed
-        if keys[pygame.K_d]:
+        if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             #self.angle -= self.rotation_speed
             self.velocity.x += self.movement_speed
 
@@ -147,7 +175,7 @@ class Asteroid(pygame.sprite.Sprite):
         super().__init__()
         self.image = random.choice(ast_imgs)
         self.rect = self.image.get_rect()
-        self.rect.x = random.choice([0, screen.get_width()])
+        self.rect.x = random.randint(0, screen.get_width())
         self.rect.y = -50
         self.direction = pygame.Vector2(random.uniform(-0.5, 0.5), 1).normalize()
         self.position = pygame.Vector2(self.rect.topleft)
@@ -176,16 +204,22 @@ health = Healthbar(20, 10, 100, 15, 100)
 
 # Initialize game score
 game_score = Game_Score()
+current_score = 0
+end = 0
+time_elap = 0
+player_accuracy = 0
 
 # Main game loop
+
 frame_count = 0
+start =time.time()
 while run:
     game_score.display_score(screen)
     if health.hp <= 0:
         player.kill()
         run = False
+        end = time.time()
 
-    start = time.time()
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
@@ -207,7 +241,7 @@ while run:
                 bullet.kill()
                 mid = time.time()
                 asteroid.kill()
-                ASTEROID_SPEED += 0.1
+                ASTEROID_SPEED += 0.15
 
     # Check for collisions between player and asteroids
     # if pygame.sprite.spritecollideany(player, asteroids):
@@ -217,7 +251,7 @@ while run:
         if player.rect.collidepoint(asteroid.position.x,asteroid.position.y):
             explo_sound.play()
             asteroid.kill()
-            health.hp -= 10
+            health.hp -= 15
 
     # Spawn new asteroids
     frame_count += 1
@@ -225,9 +259,17 @@ while run:
         spawn_asteroid()
 
     current_score = game_score.get_score()
+    player_accuracy = game_score.get_accuracy()
     game_score.display_score(screen)
     all_sprites.draw(screen)
     health.draw(screen)
     pygame.display.flip()
     clock.tick(80)
+
+end = time.time()
 pygame.quit()
+time_elap = (end - start)
+with open(file_name, 'a', newline='') as file:
+    writer = csv.writer(file)
+    writer.writerow([game_date, game_time, round(time_elap, 1), current_score, player_accuracy])
+
