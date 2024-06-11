@@ -164,9 +164,9 @@ class Rocket(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=(screen.get_width()//2, screen.get_height()-100))
         self.angle = 90
         self.rotation_speed = 5
-        self.movement_speed = 0.1
+        self.dx = 0.1
         self.position = pygame.Vector2(self.rect.center)
-        self.velocity = pygame.Vector2(0, 2)
+        self.x = pygame.Vector2(0, 2)
         self.deceleration = 0.95
 
     def update(self):
@@ -177,17 +177,24 @@ class Rocket(pygame.sprite.Sprite):
         #     self.velocity.y -= self.movement_speed * math.sin(radians)
         if keys[pygame.K_a] or keys[pygame.K_LEFT]:
             #self.angle += self.rotation_speed
-            self.velocity.x -= self.movement_speed
+            # if (self.x.x-self.dx) >= -1 :
+            self.x.x -= self.dx
             fuel.hp -= 0.1 * (ASTEROID_SPEED/10)
         if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             #self.angle -= self.rotation_speed
-            self.velocity.x += self.movement_speed
+            # if (self.x.x+self.dx) <= 1 :
+            self.x.x += self.dx
             fuel.hp -= 0.1 * (ASTEROID_SPEED/10)
 
-        self.position += self.velocity
-        self.velocity *= self.deceleration
-        self.position.x %= screen.get_width()
-        self.position.y %= screen.get_height()
+        self.position += self.x
+        self.x *= self.deceleration
+        if self.position.x < 20:
+            self.position.x = 20
+
+        if self.position.x > screen.get_width()-20 :
+            self.position.x = screen.get_width()-20
+        # self.position.x %= screen.get_width()
+        # self.position.y %= screen.get_height()
 
         self.image = pygame.transform.rotate(self.original_image, self.angle)
         self.rect = self.image.get_rect(center=self.position)
