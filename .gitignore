@@ -1,6 +1,7 @@
 .idea
 asteroid_game
 game_data.csv
+shooter-graphics
 
 # Ignore game data file
 game_data.csv

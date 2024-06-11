@@ -19,7 +19,7 @@ game_time = datetime.now().time()
 game_time = game_time.strftime("%H:%M:%S")
 
 file_exists = os.path.exists(DATA_FILE) == 1
-if file_exists :
+if file_exists:
     file_empty = os.path.getsize(DATA_FILE) == 0
 else :
     file_empty = True
@@ -69,13 +69,13 @@ ast_img4 = pygame.image.load("resources/ast4.png")
 ast_img4 = pygame.transform.scale(ast_img4, (35, 35))
 ast_img4.set_colorkey(BLACK)
 
-pill_green=pygame.image.load("shooter-graphics/bolt_gold.png")
+pill_green=pygame.image.load("resources/bolt_gold.png")
 pill_green=pygame.transform.scale(pill_green,(20,20))
 pill_green.set_colorkey(BLACK)
 
 ast_imgs = [ast_img1, ast_img2, ast_img3, ast_img4]
 
-class Game_Score():
+class Game_Score:
     def __init__(self):
         self.asteroids_hit = 0
         self.bullets_used = 0
@@ -121,11 +121,12 @@ class Game_Score():
         fuel_text_rect = fuel_text.get_rect()
         screen.blit(fuel_text,(screen.get_width()-118,10))
 
-class fuel_pill(pygame.sprite.Sprite):
+
+class Fuel_Pill(pygame.sprite.Sprite):
     def __init__(self, position, direction):
         super().__init__()
         self.image = pygame.image.load("resources/bolt_gold.png").convert_alpha()
-        self.image = pygame.transform.scale(self.image, (15, 25))  # Adjust size as necessary
+        self.image = pygame.transform.scale(self.image, (15, 25))
         self.rect = self.image.get_rect(center=position)
         self.position = pygame.Vector2(position)
         self.direction = direction
@@ -137,7 +138,6 @@ class fuel_pill(pygame.sprite.Sprite):
         self.rect.center = self.position
         if self.distance > PILL_RANGE:
             self.kill()
-
 
 
 class Healthbar():
@@ -152,7 +152,6 @@ class Healthbar():
         self.below = below
 
     def draw(self, screen):
-        # ratio = self.hp/self.maxh
         pygame.draw.rect(screen, self.below, (self.x, self.y, self.w, self.h))
         pygame.draw.rect(screen, self.over, (self.x, self.y, self.hp, self.h))
 
@@ -171,18 +170,12 @@ class Rocket(pygame.sprite.Sprite):
 
     def update(self):
         keys = pygame.key.get_pressed()
-        # if keys[pygame.K_w]:
-        #     radians = math.radians(self.angle)
-        #     self.velocity.x += self.movement_speed * math.cos(radians)
-        #     self.velocity.y -= self.movement_speed * math.sin(radians)
+
         if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-            #self.angle += self.rotation_speed
-            # if (self.x.x-self.dx) >= -1 :
             self.x.x -= self.dx
             fuel.hp -= 0.1 * (ASTEROID_SPEED/10)
+
         if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-            #self.angle -= self.rotation_speed
-            # if (self.x.x+self.dx) <= 1 :
             self.x.x += self.dx
             fuel.hp -= 0.1 * (ASTEROID_SPEED/10)
 
@@ -193,8 +186,6 @@ class Rocket(pygame.sprite.Sprite):
 
         if self.position.x > screen.get_width()-20 :
             self.position.x = screen.get_width()-20
-        # self.position.x %= screen.get_width()
-        # self.position.y %= screen.get_height()
 
         self.image = pygame.transform.rotate(self.original_image, self.angle)
         self.rect = self.image.get_rect(center=self.position)
@@ -209,7 +200,7 @@ class Bullet(pygame.sprite.Sprite):
     def __init__(self, position, direction):
         super().__init__()
         self.image = pygame.image.load("resources/bullet.png").convert_alpha()
-        self.image = pygame.transform.scale(self.image, (6, 6))  # Adjust size as necessary
+        self.image = pygame.transform.scale(self.image, (6, 6))
         self.rect = self.image.get_rect(center=position)
         self.position = pygame.Vector2(position)
         self.direction = direction
@@ -241,33 +232,28 @@ class Asteroid(pygame.sprite.Sprite):
 
     def shoot(self):
         pill_dir = pygame.Vector2(math.cos(math.radians(90)),math.sin(math.radians(90)))
-        pill = fuel_pill(self.position, pill_dir)
+        pill = Fuel_Pill(self.position, pill_dir)
         all_sprites.add(pill)
         pills.add(pill)
-
-
 
 def spawn_asteroid():
     asteroid = Asteroid(ASTEROID_SPEED)
     all_sprites.add(asteroid)
     asteroids.add(asteroid)
 
-
 # Sprite groups
 all_sprites = pygame.sprite.Group()
 bullets = pygame.sprite.Group()
 asteroids = pygame.sprite.Group()
-pills=pygame.sprite.Group()
+pills = pygame.sprite.Group()
 
 # Create player
 player = Rocket()
-all_sprites.add( player )
-
+all_sprites.add(player)
 health = Healthbar(20, 10, 100, 15, 100, "green","red")
 fuel = Healthbar(screen.get_width()-105, 10, 100, 15, 100, "yellow", "black")
-
-
 game_score = Game_Score()
+
 current_score = 0
 end = 0
 time_elap = 0
@@ -276,7 +262,7 @@ asteroids_hit = 0
 death_reason = ""
 
 frame_count = 0
-start =time.time()
+start = time.time()
 while run:
     game_score.display_score(screen)
     if health.hp <= 0:
@@ -305,7 +291,6 @@ while run:
                 shoot_sound.play()
 
     screen.fill('black')
-
     all_sprites.update()
     fuel.draw(screen)
 
@@ -316,10 +301,8 @@ while run:
                 explo_sound.play()
                 bullet.kill()
                 mid = time.time()
-                # spawn_pills(bullet.position.x, bullet.position.y )
-                # score_for_fuel=game_score()
-                # if game_score.asteroids_hit%5 == 0 :
-                asteroid.shoot()
+                if game_score.asteroids_hit%5 == 0 :
+                    asteroid.shoot()
                 asteroid.kill()
                 ASTEROID_SPEED += 0.15
 
@@ -331,14 +314,11 @@ while run:
 
     for pill in pills :
         if player.rect.collidepoint(pill.position.x,pill.position.y):
-            # explo_sound.play()
             pill.kill()
             fuel.hp += 10
             if fuel.hp > fuel.max :
                 fuel.hp = fuel.max
 
-
-    # Spawn new asteroids
     frame_count += 1
     if frame_count % SPAWN_RATE == 0:
         spawn_asteroid()
@@ -358,5 +338,3 @@ time_elap = (end - start)
 with open(DATA_FILE, 'a', newline='') as file:
     writer = csv.writer(file)
     writer.writerow([game_date, game_time, round(time_elap, 2), death_reason, current_score, player_accuracy, asteroids_hit])
-
-    #['Game Date', 'Game Time', 'Elapsed Time', 'Reason', 'Score', 'Accuracy', 'Asteroids Hit']
