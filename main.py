@@ -6,7 +6,6 @@ import csv
 from datetime import date, datetime
 import os
 
-# Initialize the game
 pygame.init()
 pygame.mixer.init()
 pygame.font.init()
@@ -20,18 +19,20 @@ game_time = datetime.now().time()
 game_time = game_time.strftime("%H:%M:%S")
 
 file_exists = os.path.exists(DATA_FILE) == 1
-file_empty = os.path.getsize(DATA_FILE) == 0
+if file_exists :
+    file_empty = os.path.getsize(DATA_FILE) == 0
+else :
+    file_empty = True
+
 
 if not file_exists:
     with open(DATA_FILE, 'w', newline='') as file:
         writer = csv.writer(file)
-        # Write the headers if the file is new or empty
         if file_empty:
             writer.writerow(['Game Date', 'Game Time', 'Elapsed Time', 'Reason', 'Score', 'Accuracy', 'Asteroids Hit'])
 
 with open(DATA_FILE, 'a', newline='') as file:
     writer = csv.writer(file)
-    # Write the headers if the file is new or empty
     if file_empty:
         writer.writerow(['Game Date', 'Game Time', 'Elapsed Time', 'Reason', 'Score', 'Accuracy', 'Asteroids Hit'])
 
@@ -39,8 +40,10 @@ with open(DATA_FILE, 'a', newline='') as file:
 BLACK = (0, 0, 0)
 BULLET_SPEED = 5.5
 BULLET_RANGE = 600
+PILL_SPEED = 2.5
+PILL_RANGE = 700
 ASTEROID_SPEED = 2
-SPAWN_RATE = 25  # Number of frames between spawning asteroids
+SPAWN_RATE = 25
 
 # Load images
 rocket_img = pygame.image.load("resources/ship.png").convert()
@@ -65,6 +68,10 @@ ast_img3.set_colorkey(BLACK)
 ast_img4 = pygame.image.load("resources/ast4.png")
 ast_img4 = pygame.transform.scale(ast_img4, (35, 35))
 ast_img4.set_colorkey(BLACK)
+
+pill_green=pygame.image.load("shooter-graphics/bolt_gold.png")
+pill_green=pygame.transform.scale(pill_green,(20,20))
+pill_green.set_colorkey(BLACK)
 
 ast_imgs = [ast_img1, ast_img2, ast_img3, ast_img4]
 
@@ -106,19 +113,48 @@ class Game_Score():
         text_rect = score_text.get_rect()
         screen.blit(score_text, (screen.get_width() - text_rect.width - 10, screen.get_height() - text_rect.height - 10))
 
+        health_text = font_score.render('H', True, (255, 255, 255))
+        health_text_rect = health_text.get_rect()
+        screen.blit(health_text, (5, 10))
+
+        fuel_text = font_score.render('F',True,(255,255,255))
+        fuel_text_rect = fuel_text.get_rect()
+        screen.blit(fuel_text,(screen.get_width()-118,10))
+
+class fuel_pill(pygame.sprite.Sprite):
+    def __init__(self, position, direction):
+        super().__init__()
+        self.image = pygame.image.load("resources/bolt_gold.png").convert_alpha()
+        self.image = pygame.transform.scale(self.image, (15, 25))  # Adjust size as necessary
+        self.rect = self.image.get_rect(center=position)
+        self.position = pygame.Vector2(position)
+        self.direction = direction
+        self.distance = 0
+
+    def update(self):
+        self.position += self.direction * PILL_SPEED
+        self.distance += PILL_SPEED
+        self.rect.center = self.position
+        if self.distance > PILL_RANGE:
+            self.kill()
+
+
 
 class Healthbar():
-    def __init__(self, x, y, w, h, maxh):
+    def __init__(self, x, y, w, h, maxh, over, below):
         self.x = x
         self.y = y
         self.w = w
         self.h = h
         self.hp = maxh
+        self.max = maxh
+        self.over = over
+        self.below = below
 
     def draw(self, screen):
         # ratio = self.hp/self.maxh
-        pygame.draw.rect(screen, 'red', (self.x, self.y, self.w, self.h))
-        pygame.draw.rect(screen, 'green', (self.x, self.y, self.hp, self.h))
+        pygame.draw.rect(screen, self.below, (self.x, self.y, self.w, self.h))
+        pygame.draw.rect(screen, self.over, (self.x, self.y, self.hp, self.h))
 
 class Rocket(pygame.sprite.Sprite):
     def __init__(self):
@@ -142,9 +178,11 @@ class Rocket(pygame.sprite.Sprite):
         if keys[pygame.K_a] or keys[pygame.K_LEFT]:
             #self.angle += self.rotation_speed
             self.velocity.x -= self.movement_speed
+            fuel.hp -= 0.1 * (ASTEROID_SPEED/10)
         if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
             #self.angle -= self.rotation_speed
             self.velocity.x += self.movement_speed
+            fuel.hp -= 0.1 * (ASTEROID_SPEED/10)
 
         self.position += self.velocity
         self.velocity *= self.deceleration
@@ -194,22 +232,34 @@ class Asteroid(pygame.sprite.Sprite):
         if self.rect.top > screen.get_height() + 20 or self.rect.left < -20 or self.rect.right > screen.get_width() + 20:
             self.kill()
 
+    def shoot(self):
+        pill_dir = pygame.Vector2(math.cos(math.radians(90)),math.sin(math.radians(90)))
+        pill = fuel_pill(self.position, pill_dir)
+        all_sprites.add(pill)
+        pills.add(pill)
+
+
+
 def spawn_asteroid():
     asteroid = Asteroid(ASTEROID_SPEED)
     all_sprites.add(asteroid)
     asteroids.add(asteroid)
 
+
 # Sprite groups
 all_sprites = pygame.sprite.Group()
 bullets = pygame.sprite.Group()
 asteroids = pygame.sprite.Group()
+pills=pygame.sprite.Group()
 
 # Create player
 player = Rocket()
-all_sprites.add(player)
-health = Healthbar(20, 10, 100, 15, 100)
+all_sprites.add( player )
 
-# Initialize game score
+health = Healthbar(20, 10, 100, 15, 100, "green","red")
+fuel = Healthbar(screen.get_width()-105, 10, 100, 15, 100, "yellow", "black")
+
+
 game_score = Game_Score()
 current_score = 0
 end = 0
@@ -218,8 +268,6 @@ player_accuracy = 0
 asteroids_hit = 0
 death_reason = ""
 
-# Main game loop
-
 frame_count = 0
 start =time.time()
 while run:
@@ -227,6 +275,11 @@ while run:
     if health.hp <= 0:
         asteroids_hit = game_score.asteroids_hit
         death_reason = "Spacecraft Health 0"
+        player.kill()
+        run = False
+        end = time.time()
+    elif fuel.hp <= 0:
+        death_reason = "Spacecraft Fuel 0"
         player.kill()
         run = False
         end = time.time()
@@ -245,8 +298,10 @@ while run:
                 shoot_sound.play()
 
     screen.fill('black')
+
     all_sprites.update()
-    # Check for collisions between bullets and asteroids
+    fuel.draw(screen)
+
     for bullet in bullets:
         for asteroid in asteroids:
             if asteroid.rect.collidepoint(bullet.position.x, bullet.position.y):
@@ -254,18 +309,27 @@ while run:
                 explo_sound.play()
                 bullet.kill()
                 mid = time.time()
+                # spawn_pills(bullet.position.x, bullet.position.y )
+                # score_for_fuel=game_score()
+                # if game_score.asteroids_hit%5 == 0 :
+                asteroid.shoot()
                 asteroid.kill()
                 ASTEROID_SPEED += 0.15
 
-    # Check for collisions between player and asteroids
-    # if pygame.sprite.spritecollideany(player, asteroids):
-    #     run = False  # End the game
-    #     end = time.time()
     for asteroid in asteroids :
         if player.rect.collidepoint(asteroid.position.x,asteroid.position.y):
             explo_sound.play()
             asteroid.kill()
             health.hp -= 15
+
+    for pill in pills :
+        if player.rect.collidepoint(pill.position.x,pill.position.y):
+            # explo_sound.play()
+            pill.kill()
+            fuel.hp += 10
+            if fuel.hp > fuel.max :
+                fuel.hp = fuel.max
+
 
     # Spawn new asteroids
     frame_count += 1
