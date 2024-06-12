@@ -5,6 +5,7 @@ import time
 import csv
 from datetime import date, datetime
 import os
+from constants import *
 
 pygame.init()
 pygame.mixer.init()
@@ -19,11 +20,11 @@ game_time = datetime.now().time()
 game_time = game_time.strftime("%H:%M:%S")
 
 file_exists = os.path.exists(DATA_FILE) == 1
+
 if file_exists:
     file_empty = os.path.getsize(DATA_FILE) == 0
 else :
     file_empty = True
-
 
 if not file_exists:
     with open(DATA_FILE, 'w', newline='') as file:
@@ -301,7 +302,7 @@ while run:
                 explo_sound.play()
                 bullet.kill()
                 mid = time.time()
-                if game_score.asteroids_hit%5 == 0 :
+                if game_score.asteroids_hit % (random.randint(1,20)) == 0:
                     asteroid.shoot()
                 asteroid.kill()
                 ASTEROID_SPEED += 0.15
