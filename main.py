@@ -301,7 +301,7 @@ while run:
                 explo_sound.play()
                 bullet.kill()
                 mid = time.time()
-                if game_score.asteroids_hit%5 == 0 :
+                if game_score.asteroids_hit % (random.randint(1,20)) == 0:
                     asteroid.shoot()
                 asteroid.kill()
                 ASTEROID_SPEED += 0.15
