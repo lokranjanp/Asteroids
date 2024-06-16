@@ -6,6 +6,8 @@ shooter-graphics
 # Ignore game data file
 game_data.csv
 
+visualiser.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
