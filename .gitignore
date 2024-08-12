@@ -5,6 +5,7 @@ shooter-graphics
 
 # Ignore game data file
 game_data.csv
+.DS_Store
 
 visualiser.py
 
