@@ -19,24 +19,6 @@ game_date = date.today()
 game_time = datetime.now().time()
 game_time = game_time.strftime("%H:%M:%S")
 
-file_exists = os.path.exists(DATA_FILE) == 1
-
-if file_exists:
-    file_empty = os.path.getsize(DATA_FILE) == 0
-else :
-    file_empty = True
-
-if not file_exists:
-    with open(DATA_FILE, 'w', newline='') as file:
-        writer = csv.writer(file)
-        if file_empty:
-            writer.writerow(['Game Date', 'Game Time', 'Elapsed Time', 'Reason', 'Score', 'Accuracy', 'Asteroids Hit'])
-
-with open(DATA_FILE, 'a', newline='') as file:
-    writer = csv.writer(file)
-    if file_empty:
-        writer.writerow(['Game Date', 'Game Time', 'Elapsed Time', 'Reason', 'Score', 'Accuracy', 'Asteroids Hit'])
-
 # Constants
 BLACK = (0, 0, 0)
 BULLET_SPEED = 5.5
@@ -273,31 +255,24 @@ pills = pygame.sprite.Group()
 # Create player
 player = Rocket()
 all_sprites.add(player)
-health = Healthbar(20, 10, 100, 15, 100, "green","red")
+health = Healthbar(20, 10, 100, 15, 100, "green", "red")
 fuel = Healthbar(screen.get_width()-105, 10, 100, 15, 100, "yellow", "black")
 game_score = Game_Score()
 
 current_score = 0
-end = 0
-time_elap = 0
 player_accuracy = 0
 asteroids_hit = 0
-death_reason = ""
-speed_modif = 0
 
 frame_count = 0
 start = time.time()
 while run:
-    speed_modif = ASTEROID_SPEED
     game_score.display_score(screen)
     if health.hp <= 0:
         asteroids_hit = game_score.asteroids_hit
-        death_reason = "Spacecraft Health 0"
         player.kill()
         run = False
         end = time.time()
     elif fuel.hp <= 0:
-        death_reason = "Spacecraft Fuel 0"
         player.kill()
         run = False
         end = time.time()
@@ -305,7 +280,6 @@ while run:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             asteroids_hit = game_score.asteroids_hit
-            death_reason = "Player Quit"
             run = False
             end = time.time()
 
@@ -363,12 +337,5 @@ while run:
     health.draw(screen)
     pygame.display.flip()
     clock.tick(80)
-    if speed_modif != ASTEROID_SPEED:
-        print(ASTEROID_SPEED)
 
-end = time.time()
 pygame.quit()
-time_elap = (end - start)
-with open(DATA_FILE, 'a', newline='') as file:
-    writer = csv.writer(file)
-    writer.writerow([game_date, game_time, round(time_elap, 2), death_reason, current_score, player_accuracy, asteroids_hit])
